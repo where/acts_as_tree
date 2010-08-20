@@ -13,8 +13,7 @@ Gem::Specification.new do |s|
   association.}
   s.date              = %q{#{Time.now.strftime('%Y-%m-%d')}}
   s.summary           = %q{acts_as_tree plugin.}
-  s.email             = %q{info@refinerycms.com}
-  s.homepage          = %q{http://refinerycms.com}
+  s.homepage          = %q{http://philiparndt.name}
   s.authors           = ["David Heinemeier Hansson", "Philip Arndt", "Others"]
   s.require_paths     = %w(lib)
 
@@ -27,4 +26,4 @@ Gem::Specification.new do |s|
 end
 EOF
 
-File.open(File.expand_path("../../refinerycms-acts_as_tree.gemspec", __FILE__), 'w').puts(gemspec)
+File.open(File.expand_path("../../acts_as_tree.gemspec", __FILE__), 'w').puts(gemspec)
