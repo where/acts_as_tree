@@ -1,4 +1,4 @@
-h1. acts_as_tree
+h1. acts_as_tree (for rails3)
 
 Specify this __acts_as__ extension if you want to model a tree structure by providing a parent association and a children
 association. This requires that you have a foreign key column, which by default is called __parent_id__.

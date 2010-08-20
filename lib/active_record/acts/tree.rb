@@ -42,22 +42,45 @@ module ActiveRecord
         # * <tt>counter_cache</tt> - keeps a count in a +children_count+ column if set to +true+ (default: +false+).
         # * <tt>include</tt> - ability to add eager loading to tree finds by specifying associations to include. 'children' association eager loaded by default. Disable by supplying :include => nil or :include => []
         def acts_as_tree(options = {})
-          configuration = { :foreign_key => "parent_id", :order => nil, :counter_cache => nil, :include => [:children] }
-          configuration.update(options) if options.is_a?(Hash) # to avoid something nasty happening check for Hash here.
+          configuration = {
+            :foreign_key => "parent_id",
+            :order => nil,
+            :counter_cache => nil,
+            :dependent => :destroy,
+            :touch => false,
+            :include => [:children]
+          }
+          configuration.update(options) if options.is_a?(Hash)
           configuration.update({:include => []}) if configuration[:include].nil? # if calling class really doesn't want to eager load its children.
 
-          belongs_to :parent, :class_name => name, :foreign_key => configuration[:foreign_key], :counter_cache => configuration[:counter_cache], :include => configuration[:include]
-          has_many :children, :class_name => name, :foreign_key => configuration[:foreign_key], :order => configuration[:order], :dependent => :delete_all, :include => configuration[:include]
+          belongs_to :parent,
+                     :class_name => name,
+                     :foreign_key => configuration[:foreign_key],
+                     :counter_cache => configuration[:counter_cache],
+                     :inverse_of => :children,
+                     :touch => configuration[:touch]
+
+          has_many :children,
+                   :class_name => name,
+                   :foreign_key => configuration[:foreign_key],
+                   :order => configuration[:order],
+                   :dependent => configuration[:dependent],
+                   :include => configuration[:include],
+                   :inverse_of => :parent
 
           class_eval <<-EOV
             include ActiveRecord::Acts::Tree::InstanceMethods
 
-            def self.roots
-              find :all, :conditions => "#{configuration[:foreign_key]} IS NULL", :order => #{configuration[:order].nil? ? "nil" : %Q{"#{configuration[:order]}"}}, :include => %W{#{configuration[:include].join(' ')}}
-            end
+            scope       :roots,
+                        :conditions => "#{configuration[:foreign_key]} IS NULL",
+                        :order => #{configuration[:order].nil? ? "nil" : %Q{"#{configuration[:order]}"}},
+                        :include => %W{#{configuration[:include].join(' ')}}
+
+            after_save :update_level_cache
+            after_update :update_parents_counter_cache
 
             def self.root
-              find :first, :conditions => "#{configuration[:foreign_key]} IS NULL", :order => #{configuration[:order].nil? ? "nil" : %Q{"#{configuration[:order]}"}}, :include => %W{#{configuration[:include].join(' ')}}
+              roots.first
             end
 
             def self.childless
@@ -68,6 +91,16 @@ module ActiveRecord
               end
 
               nodes
+            end
+
+            validates_each "#{configuration[:foreign_key]}" do |record, attr, value|
+              if value
+                if record.id == value
+                  record.errors.add attr, "cannot be it's own id"
+                elsif record.descendants.map {|c| c.id}.include?(value)
+                  record.errors.add attr, "cannot be a descendant's id"
+                end
+              end
             end
           EOV
         end
@@ -80,6 +113,14 @@ module ActiveRecord
         def ancestors
           node, nodes = self, []
           nodes << node = node.parent until node.parent.nil? and return nodes
+        end
+
+        def root?
+          parent == nil
+        end
+
+        def leaf?
+          children.length == 0
         end
 
         # Returns the root node of the tree.
@@ -98,8 +139,8 @@ module ActiveRecord
         # Returns all siblings and a reference to the current node.
         #
         #   subchild1.self_and_siblings # => [subchild1, subchild2]
-        def self_and_siblings
-          parent ? parent.children : self.class.roots
+        def self_and_siblings(node = self)
+          node.parent.present? ? node.parent.reload.children : node.class.roots
         end
 
         # Returns a flat list of the descendants of the current node.
@@ -125,15 +166,26 @@ module ActiveRecord
         #
         #   node.childess # => [subchild1, subchild2]
         def childless
-          nodes = []
+          self.descendants.reject{|d| d.children.any?}
+        end
 
-          unless self.children.empty?
-            nodes << self.children.collect { |child| child.childless }
-          else
-            nodes << self
+        private
+
+        def update_parents_counter_cache
+          if self.respond_to?(:children_count) && parent_id_changed?
+            self.class.decrement_counter(:children_count, parent_id_was)
+            self.class.increment_counter(:children_count, parent_id)
           end
+        end
 
-          nodes.flatten.compact
+        def update_level_cache
+          if respond_to?(:level_cache) && parent_id_changed?
+            _level_cache = ancestors.length
+
+            if level_cache != _level_cache
+              self.class.update_all("level_cache = #{_level_cache}", ['id = ?', id])
+            end
+          end
         end
       end
     end
