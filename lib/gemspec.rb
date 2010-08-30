@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-version = '0.9.8'
+version = File.open(File.expand_path('../../VERSION', __FILE__)).read.strip
 raise "Could not get version so gemspec can not be built" if version.nil?
 files = Dir.glob("**/*").flatten.reject do |file|
   file =~ /\.gem(spec)?$/
@@ -7,7 +7,7 @@ end
 
 gemspec = <<EOF
 Gem::Specification.new do |s|
-  s.name              = %q{acts_as_tree}
+  s.name              = %q{parndt-acts_as_tree}
   s.version           = %q{#{version}}
   s.description       = %q{Use this acts_as extension if you want to model a tree structure by providing a parent association and a children
   association.}
@@ -26,4 +26,4 @@ Gem::Specification.new do |s|
 end
 EOF
 
-File.open(File.expand_path("../../acts_as_tree.gemspec", __FILE__), 'w').puts(gemspec)
+File.open(File.expand_path("../../parndt-acts_as_tree.gemspec", __FILE__), 'w').puts(gemspec)
