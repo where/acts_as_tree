@@ -1,12 +1,12 @@
 Gem::Specification.new do |s|
-  s.name              = %q{parndt-acts_as_tree}
-  s.version           = %q{1.2.5}
+  s.name              = %q{acts_as_tree}
+  s.version           = %q{1.2.5.1}
   s.description       = %q{Use this acts_as extension if you want to model a tree structure by providing a parent association and a children
   association.}
-  s.date              = %q{2010-08-31}
+  s.date              = %q{2010-10-27}
   s.summary           = %q{acts_as_tree plugin.}
   s.homepage          = %q{http://philiparndt.name}
-  s.authors           = ["David Heinemeier Hansson", "Philip Arndt", "Others"]
+  s.authors           = ["David Heinemeier Hansson", "Others"]
   s.require_paths     = %w(lib)
 
   s.files             = [
